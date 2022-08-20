@@ -53,8 +53,7 @@ func NewConnection(connection net.Conn) {
 	pipeOut := make(chan string)
 
 	//Creamos la conexion en el pool
-	ConnectionPool[imei][0] = pipeIn
-	ConnectionPool[imei][1] = pipeOut
+	ConnectionPool[imei] = []chan string{pipeIn, pipeOut}
 
 	//Funcion de cierre
 	defer func() {
