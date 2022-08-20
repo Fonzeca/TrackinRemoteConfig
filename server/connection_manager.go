@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/Fonzeca/TrackinRemoteConfig/server/decoder"
@@ -84,13 +85,16 @@ func NewConnection(connection net.Conn) {
 			continue
 		}
 
-		connection.SetReadDeadline(time.Now().Add(time.Second * 10))
+		connection.SetReadDeadline(time.Now().Add(time.Second * 20))
 
 		// Obtenemos el mensaje de respuesta
 		buffer := make([]byte, 2048)
 		mLen, err := connection.Read(buffer)
 		if err != nil {
 			fmt.Println("Error reading:", err.Error())
+			if strings.Contains(err.Error(), "timeout") {
+				continue
+			}
 		}
 		if mLen == 0 {
 			fmt.Println("Cerró la conexion el cliente")
