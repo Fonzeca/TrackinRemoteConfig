@@ -12,7 +12,7 @@ func Decode(data []byte) (string, string, error) {
 	if len(data) <= 16 {
 		return "", "", errors.New("Data length corto")
 	}
-	imeiData := data[7:14]
+	imeiData := data[7:15]
 	imei, err := decodeImei(imeiData)
 	if err != nil {
 		return "", "", err
