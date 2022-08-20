@@ -39,7 +39,8 @@ func NewConnection(connection net.Conn) {
 	//Obtenemos el imei
 	imei, err := decoder.DecodeLogin(buffer)
 	if err != nil {
-		panic(err)
+		fmt.Printf("%v", err)
+		return
 	}
 
 	//Cerramos el pipe viejo si se quedo pegado en la lista
@@ -98,12 +99,14 @@ func NewConnection(connection net.Conn) {
 		//Decodificamos el mensaje de respuesta
 		imeiResp, content, err := decoder.Decode(buffer)
 		if err != nil {
-			panic(err)
+			fmt.Printf("%v", err)
+			return
 		}
 
 		//Verificamos el imei de respuesta
 		if imeiResp != imei {
 			fmt.Println("Error imei diferentes")
+			return
 		}
 
 		//Imprimimos el mensaje
