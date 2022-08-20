@@ -84,16 +84,18 @@ func NewConnection(connection net.Conn) {
 			continue
 		}
 
+		connection.SetReadDeadline(time.Now().Add(time.Second * 10))
+
 		// Obtenemos el mensaje de respuesta
 		buffer := make([]byte, 2048)
-		mLen, _ := connection.Read(buffer)
+		mLen, err := connection.Read(buffer)
+		if err != nil {
+			fmt.Println("Error reading:", err.Error())
+		}
 		if mLen == 0 {
 			fmt.Println("Cerró la conexion el cliente")
 			connection.Close()
 			break
-		}
-		if err != nil {
-			fmt.Println("Error reading:", err.Error())
 		}
 
 		//Decodificamos el mensaje de respuesta
