@@ -3,37 +3,44 @@ package decoder
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"unicode/utf16"
 	"unicode/utf8"
 )
 
-func Decode(data []byte) (string, string) {
+func Decode(data []byte) (string, string, error) {
 	if len(data) <= 16 {
-		return "error", "error"
+		return "", "", errors.New("Data length corto")
 	}
 	imeiData := data[7:14]
-	imei := decodeImei(imeiData)
+	imei, err := decodeImei(imeiData)
+	if err != nil {
+		return "", "", err
+	}
 
 	contentData := data[16:]
-	content := decodeContent(contentData)
+	content, err := decodeContent(contentData)
+	if err != nil {
+		return "", "", err
+	}
 
-	return imei, content
+	return imei, content, nil
 }
 
-func decodeImei(data []byte) string {
+func decodeImei(data []byte) (string, error) {
 	if len(data) != 8 {
-		return ""
+		return "", errors.New("Imei tiene que ser 8 de lenght")
 	}
 	imei := hex.EncodeToString(data)
 
 	imei = imei[1:]
-	return imei
+	return imei, nil
 }
 
-func decodeContent(data []byte) string {
+func decodeContent(data []byte) (string, error) {
 
 	if len(data)%2 != 0 {
-		return "error"
+		return "", errors.New("El content no es multiplo de 2")
 	}
 
 	u16s := make([]uint16, 1)
@@ -50,5 +57,5 @@ func decodeContent(data []byte) string {
 		ret.Write(b8buf[:n])
 	}
 
-	return ret.String()
+	return ret.String(), nil
 }

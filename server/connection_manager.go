@@ -14,6 +14,8 @@ var ConnectionPool = make(map[string]([]chan string))
 func NewConnection(connection net.Conn) {
 	fmt.Println("Connection established: ", connection.RemoteAddr().String())
 
+	defer connection.Close()
+
 	//Leemos el primer mensaje
 	buffer := make([]byte, 2048)
 	mLen, err := connection.Read(buffer)
@@ -35,7 +37,10 @@ func NewConnection(connection net.Conn) {
 	}
 
 	//Obtenemos el imei
-	imei := decoder.DecodeLogin(buffer)
+	imei, err := decoder.DecodeLogin(buffer)
+	if err != nil {
+		panic(err)
+	}
 
 	//Cerramos el pipe viejo si se quedo pegado en la lista
 	if ConnectionPool[imei] != nil {
@@ -91,7 +96,10 @@ func NewConnection(connection net.Conn) {
 		}
 
 		//Decodificamos el mensaje de respuesta
-		imeiResp, content := decoder.Decode(buffer)
+		imeiResp, content, err := decoder.Decode(buffer)
+		if err != nil {
+			panic(err)
+		}
 
 		//Verificamos el imei de respuesta
 		if imeiResp != imei {
