@@ -91,8 +91,9 @@ func NewConnection(connection net.Conn) {
 		buffer := make([]byte, 2048)
 		mLen, err := connection.Read(buffer)
 		if err != nil {
-			fmt.Println("Error reading:", err.Error())
+			fmt.Println("Error reading")
 			if strings.Contains(err.Error(), "timeout") {
+				pipeOut <- err.Error()
 				continue
 			}
 		}
