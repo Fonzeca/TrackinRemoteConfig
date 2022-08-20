@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -17,43 +18,10 @@ func NewConnection(connection net.Conn) {
 
 	defer connection.Close()
 
-	//Leemos el primer mensaje
-	buffer := make([]byte, 2048)
-	mLen, err := connection.Read(buffer)
-	//Si el mensaje es vacio, cerró la conexion
-	if mLen == 0 {
-		fmt.Println("Connection closed by client")
-		connection.Close()
-		return
-	}
+	imei, err := readLoginMessage(connection)
 	if err != nil {
-		fmt.Println("Error reading:", err.Error())
-	}
-
-	//verificamos que el mensaje sea de Login
-	if buffer[2] != 0x01 {
-		fmt.Println("Not Login message")
-		connection.Close()
+		fmt.Println(err)
 		return
-	}
-
-	//Obtenemos el imei
-	imei, err := decoder.DecodeLogin(buffer)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-
-	//Cerramos el pipe viejo si se quedo pegado en la lista
-	if ConnectionPool[imei] != nil {
-		if ConnectionPool[imei][0] != nil {
-			close(ConnectionPool[imei][0])
-		}
-
-		if ConnectionPool[imei][1] != nil {
-			close(ConnectionPool[imei][1])
-		}
-
 	}
 
 	pipeIn := make(chan string)
@@ -67,6 +35,7 @@ func NewConnection(connection net.Conn) {
 		close(pipeIn)
 		close(pipeOut)
 		ConnectionPool[imei] = nil
+		delete(ConnectionPool, imei)
 	}()
 
 	//Loop para manter la conexion activa
@@ -81,7 +50,7 @@ func NewConnection(connection net.Conn) {
 		//Mandamos el mensaje al cliente
 		_, err := connection.Write(dataToSend)
 		if err != nil {
-			fmt.Println("Intentelo nuevamente")
+			pipeOut <- "Intentelo nuevamente"
 			continue
 		}
 
@@ -91,28 +60,29 @@ func NewConnection(connection net.Conn) {
 		buffer := make([]byte, 2048)
 		mLen, err := connection.Read(buffer)
 		if err != nil {
-			fmt.Println("Error reading")
 			if strings.Contains(err.Error(), "timeout") {
 				pipeOut <- err.Error()
 				continue
 			}
+			pipeOut <- "Error al leer el mensaje"
+			continue
 		}
 		if mLen == 0 {
-			fmt.Println("Cerró la conexion el cliente")
+			pipeOut <- "Cerró la conexion el cliente"
 			connection.Close()
-			break
+			return
 		}
 
 		//Decodificamos el mensaje de respuesta
 		imeiResp, content, err := decoder.Decode(buffer)
 		if err != nil {
-			fmt.Printf("%v", err)
+			pipeOut <- err.Error()
 			return
 		}
 
 		//Verificamos el imei de respuesta
 		if imeiResp != imei {
-			fmt.Println("Error imei diferentes")
+			pipeOut <- "Error imei diferentes"
 			return
 		}
 
@@ -121,4 +91,42 @@ func NewConnection(connection net.Conn) {
 
 		time.Sleep(time.Second)
 	}
+}
+
+func readLoginMessage(connection net.Conn) (string, error) {
+
+	//Leemos el primer mensaje
+	buffer := make([]byte, 2048)
+	mLen, err := connection.Read(buffer)
+	//Si el mensaje es vacio, cerró la conexion
+	if mLen == 0 {
+		return "", errors.New("Connection closed by client")
+	}
+	if err != nil {
+		return "", err
+	}
+
+	//verificamos que el mensaje sea de Login
+	if buffer[2] != 0x01 {
+		return "", errors.New("Not Login message")
+	}
+
+	//Obtenemos el imei
+	imei, err := decoder.DecodeLogin(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	//Cerramos el pipe viejo si se quedo pegado en la lista
+	if ConnectionPool[imei] != nil {
+		if ConnectionPool[imei][0] != nil {
+			close(ConnectionPool[imei][0])
+		}
+
+		if ConnectionPool[imei][1] != nil {
+			close(ConnectionPool[imei][1])
+		}
+	}
+
+	return imei, nil
 }

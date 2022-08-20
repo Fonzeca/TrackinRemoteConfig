@@ -27,6 +27,7 @@ func Serve() {
 
 		if err != nil {
 			fmt.Println("Error accepting: ", err.Error())
+			continue
 			// os.Exit(1)
 		}
 
